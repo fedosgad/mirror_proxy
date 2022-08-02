@@ -9,6 +9,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"sync"
+	"tls_mirror/cert_generator"
 	"tls_mirror/hijackers"
 )
 
@@ -129,10 +130,10 @@ func getUtlsHijacker(certFile, keyFile, keyLogFile, fallbackCertTarget, connSpec
 			log.Fatalf("Error opening key log file: %v", err)
 		}
 	}
-	cg, err := newCertGenerator(certs[0], fallbackCertTarget)
+	cg, err := cert_generator.NewCertGenerator(certs[0], fallbackCertTarget)
 	if err != nil {
 		log.Fatalf("Error creating certificate generator: %v", err)
 	}
 
-	return hijackers.NewUTLSHijacker(connSpecName, allowInsecure, keyLogWriter, cg.genChildCert)
+	return hijackers.NewUTLSHijacker(connSpecName, allowInsecure, keyLogWriter, cg.GenChildCert)
 }

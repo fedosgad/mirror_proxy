@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"io"
 	"net"
-	"net/http"
+	"net/url"
 )
 
 type stdlibHijacker struct {
@@ -28,9 +28,9 @@ func NewStdlibHijacker(
 	}
 }
 
-func (h *stdlibHijacker) GetConns(req *http.Request, clientConn net.Conn) (net.Conn, net.Conn, error) {
+func (h *stdlibHijacker) GetConns(url *url.URL, clientConn net.Conn) (net.Conn, net.Conn, error) {
 	var ips, names []string
-	target := []string{req.URL.Hostname()}
+	target := []string{url.Hostname()}
 	if net.ParseIP(target[0]) == nil {
 		names = target
 	} else {
@@ -40,7 +40,7 @@ func (h *stdlibHijacker) GetConns(req *http.Request, clientConn net.Conn) (net.C
 	config.GetCertificate = h.certGenConstructor(ips, names)
 	plaintextConn := tls.Server(clientConn, config)
 
-	remoteConn, err := tls.Dial("tcp", req.URL.Host, h.remoteTLSConfig.Clone())
+	remoteConn, err := tls.Dial("tcp", url.Host, h.remoteTLSConfig.Clone())
 	if err != nil {
 		return nil, nil, err
 	}

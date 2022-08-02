@@ -1,4 +1,4 @@
-package main
+package cert_generator
 
 import (
 	"crypto/rand"
@@ -6,26 +6,40 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"fmt"
 	utls "github.com/getlantern/utls"
 	"net"
 	"time"
 )
 
-type certificateGenerator struct {
+type CertificateGenerator struct {
 	ca             tls.Certificate
 	caX509         *x509.Certificate
 	fallbackTarget string
 }
 
-func newCertGenerator(ca tls.Certificate, fallbackTarget string) (*certificateGenerator, error) {
+func NewCertGenerator(ca tls.Certificate, fallbackTarget string) (*CertificateGenerator, error) {
 	caX509, err := x509.ParseCertificate(ca.Certificate[0])
 	if err != nil {
 		return nil, err
 	}
-	return &certificateGenerator{ca: ca, caX509: caX509, fallbackTarget: fallbackTarget}, nil
+	return &CertificateGenerator{ca: ca, caX509: caX509, fallbackTarget: fallbackTarget}, nil
 }
 
-func (cg *certificateGenerator) genChildCert(ips, names []string) (*tls.Certificate, error) {
+func NewCertGeneratorFromFiles(certFile, keyFile, fallbackCertTarget string) (*CertificateGenerator, error) {
+	var certs []tls.Certificate
+	if certFile == "" || keyFile == "" {
+		return nil, fmt.Errorf("certificate and key files required")
+	}
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return nil, err
+	}
+	certs = []tls.Certificate{cert}
+	return NewCertGenerator(certs[0], fallbackCertTarget)
+}
+
+func (cg *CertificateGenerator) GenChildCert(ips, names []string) (*tls.Certificate, error) {
 	private, cab, err := cg.genCertBytes(ips, names)
 	if err != nil {
 		return nil, err
@@ -37,7 +51,7 @@ func (cg *certificateGenerator) genChildCert(ips, names []string) (*tls.Certific
 	}, nil
 }
 
-func (cg *certificateGenerator) genChildCertUTLS(ips, names []string) (*utls.Certificate, error) {
+func (cg *CertificateGenerator) GenChildCertUTLS(ips, names []string) (*utls.Certificate, error) {
 	private, cab, err := cg.genCertBytes(ips, names)
 	if err != nil {
 		return nil, err
@@ -49,7 +63,7 @@ func (cg *certificateGenerator) genChildCertUTLS(ips, names []string) (*utls.Cer
 	}, nil
 }
 
-func (cg *certificateGenerator) genCertBytes(ips []string, names []string) (*rsa.PrivateKey, []byte, error) {
+func (cg *CertificateGenerator) genCertBytes(ips []string, names []string) (*rsa.PrivateKey, []byte, error) {
 	s, _ := rand.Prime(rand.Reader, 128)
 
 	template := &x509.Certificate{

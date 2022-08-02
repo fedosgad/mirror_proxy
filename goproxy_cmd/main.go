@@ -8,16 +8,11 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"tls_mirror/cert_generator"
 	"tls_mirror/hijackers"
 
 	"github.com/elazarl/goproxy"
 )
-
-func orPanic(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
 
 func main() {
 	verbose := flag.Bool("v", false, "Log every proxy request to stdout")
@@ -73,10 +68,10 @@ func getUtlsHijacker(certFile, keyFile, keyLogFile, fallbackCertTarget, connSpec
 			log.Fatalf("Error opening key log file: %v", err)
 		}
 	}
-	cg, err := newCertGenerator(certs[0], fallbackCertTarget)
+	cg, err := cert_generator.NewCertGenerator(certs[0], fallbackCertTarget)
 	if err != nil {
 		log.Fatalf("Error creating certificate generator: %v", err)
 	}
 
-	return hijackers.NewUTLSHijacker(connSpecName, allowInsecure, keyLogWriter, cg.genChildCert)
+	return hijackers.NewUTLSHijacker(connSpecName, allowInsecure, keyLogWriter, cg.GenChildCert)
 }

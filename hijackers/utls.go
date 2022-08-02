@@ -7,8 +7,8 @@ import (
 	"io"
 	"log"
 	"net"
-	"net/http"
 	"net/url"
+	"tls_mirror/utils"
 	"tls_mirror/utls_factory"
 )
 
@@ -39,24 +39,24 @@ func NewUTLSHijacker(
 	}
 }
 
-func (h *utlsHijacker) GetConns(req *http.Request, clientConn net.Conn) (net.Conn, net.Conn, error) {
+func (h *utlsHijacker) GetConns(url *url.URL, clientConn net.Conn) (net.Conn, net.Conn, error) {
 	var hostname string
-	if net.ParseIP(req.URL.Hostname()) == nil {
-		hostname = req.URL.Hostname()
+	if net.ParseIP(url.Hostname()) == nil {
+		hostname = url.Hostname()
 	}
 
-	clientConnOrig, clientConnCopy := NewTeeConn(clientConn)
+	clientConnOrig, clientConnCopy := utils.NewTeeConn(clientConn)
 
 	var remoteConn net.Conn
 	alpnCh := make(chan []string)
 	alpnErrCh := make(chan error)
 	clientConfig := h.clientTLSConfig.Clone()
-	clientConfig.GetCertificate = h.clientHelloCallback(req.URL, clientConfig, &remoteConn, alpnCh, alpnErrCh)
+	clientConfig.GetCertificate = h.clientHelloCallback(url, clientConfig, &remoteConn, alpnCh, alpnErrCh)
 	plaintextConn := tls.Server(clientConnOrig, clientConfig)
-	//_, err := clientConnOrig.Write([]byte("HTTP/1.1 200 Ok\r\n\r\n"))
-	//if err != nil {
-	//	return nil, nil, err
-	//}
+	_, err := clientConnOrig.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	if err != nil {
+		return nil, nil, err
+	}
 
 	go h.extractALPN(clientConnCopy, alpnCh, alpnErrCh)
 
@@ -66,7 +66,7 @@ func (h *utlsHijacker) GetConns(req *http.Request, clientConn net.Conn) (net.Con
 	cs := plaintextConn.ConnectionState()
 	sni := cs.ServerName
 
-	remotePlaintextConn, err := net.Dial("tcp", req.URL.Host)
+	remotePlaintextConn, err := net.Dial("tcp", url.Host)
 	if err != nil {
 		remotePlaintextConn.Close()
 		return nil, nil, err
@@ -111,7 +111,6 @@ func (h *utlsHijacker) clientHelloCallback(
 		sni := info.ServerName
 		remotePlaintextConn, err := net.Dial("tcp", target.Host)
 		if err != nil {
-			remotePlaintextConn.Close()
 			return nil, err
 		}
 		remoteConfig := h.remoteUTLSConfig.Clone()

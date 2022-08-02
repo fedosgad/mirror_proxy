@@ -1,84 +1,63 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
 	"github.com/elazarl/goproxy"
 	"io"
+	"log"
 	"net"
 	"net/http"
-	"time"
+	"sync"
 	"tls_mirror/hijackers"
 )
 
-const flushInterval = 100 * time.Millisecond
+func getTLSHijackFunc(hj hijackers.Hijacker) func(req *http.Request, connL net.Conn, ctx *goproxy.ProxyCtx) {
+	return func(req *http.Request, connL net.Conn, ctx *goproxy.ProxyCtx) {
+		var err error
+		var tlsConnR net.Conn
+		var closer sync.Once
 
-func getTLSHijackFunc(hj hijackers.Hijacker) func(req *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
-	return func(req *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
-		defer func() {
-			if e := recover(); e != nil {
-				ctx.Logf("error connecting to remote: %v", e)
-				client.Write([]byte("HTTP/1.1 500 Cannot reach destination\r\n\r\n"))
-			}
-			client.Close()
-		}()
-
-		clientPlaintext, remotePlaintext, err := hj.GetConns(req, client)
-		orPanic(err)
-		clientBuf := bufio.NewReadWriter(bufio.NewReader(clientPlaintext), bufio.NewWriter(clientPlaintext))
-		remoteBuf := bufio.NewReadWriter(bufio.NewReader(remotePlaintext), bufio.NewWriter(remotePlaintext))
-
-		flushClose := func(buf *bufio.ReadWriter, conn net.Conn) {
-			err := buf.Flush()
-			orPanic(err)
-			err = conn.Close()
-			orPanic(err)
+		closeFunc := func() {
+			ctx.Logf("[*] Connections closed")
+			_ = connL.Close()
+			_ = tlsConnR.Close()
 		}
 
-		defer flushClose(remoteBuf, remotePlaintext)
-		defer flushClose(clientBuf, clientPlaintext)
-
-		errChan := make(chan error)
-		done := make(chan struct{})
-
-		connectLoop := func(dst io.Writer, src io.Reader, errTag string) {
-			n, err := io.Copy(dst, src)
-			if err != nil {
-				errChan <- fmt.Errorf("%s: copy error on byte %d: %v", errTag, n, err)
-				return
-			}
+		tlsConnL, tlsConnR, err := hj.GetConns(req.URL, connL)
+		if err != nil {
+			ctx.Warnf("[x] Couldn't connect: %v", err)
+			return
 		}
 
-		flushLoop := func(buf *bufio.ReadWriter, errTag string) {
-			ticker := time.NewTicker(flushInterval)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-done:
-					return
-				case <-ticker.C:
-					err := buf.Flush()
-					if err != nil {
-						errChan <- fmt.Errorf("%s: flush err: %v", errTag, err)
-						return
-					}
-				}
-			}
+		ctx.Logf("[*] Connected to server: %s\n", tlsConnR.RemoteAddr())
+
+		go handleServerTLSConn(tlsConnR, tlsConnL, &closer)
+
+		_, e := io.Copy(tlsConnR, tlsConnL)
+		if e != nil && e != io.EOF {
+			log.Printf("bad io.Copy [handleConnection]: %v", e)
 		}
 
-		go connectLoop(clientBuf, remoteBuf, "remote->client")
-		go connectLoop(remoteBuf, clientBuf, "client->remote")
-		//go connectLoop(clientPlaintext, remotePlaintext, "remote->client")
-		//go connectLoop(remotePlaintext, clientPlaintext, "client->remote")
-		go flushLoop(clientBuf, "client flush")
-		go flushLoop(remoteBuf, "remote flush")
-
-		select {
-		case err := <-errChan:
-			close(done)
-			orPanic(err)
-		case <-done:
-		}
-
+		closer.Do(closeFunc)
 	}
+}
+
+func handleServerTLSConn(connR, connL net.Conn, closer *sync.Once) {
+	closeFunc := func() {
+		log.Println("[*] Connections closed.")
+		_ = connL.Close()
+		_ = connR.Close()
+	}
+
+	_, e := io.Copy(connL, connR)
+
+	if e != nil && e != io.EOF {
+		// check if error is about the closed connection
+		// this is expected in most cases, so don't make a noise about it
+		netOpError, ok := e.(*net.OpError)
+		if ok && netOpError.Err.Error() != "use of closed network connection" {
+			log.Printf("bad io.Copy [handleServerMessage]: %v", e)
+		}
+	}
+
+	closer.Do(closeFunc)
 }
