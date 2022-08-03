@@ -6,8 +6,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"regexp"
+	"time"
 	"tls_mirror/cert_generator"
 	"tls_mirror/hijackers"
 
@@ -24,14 +26,15 @@ func main() {
 	keyLogFile := flag.String("l", "", "SSL/TLS key log file")
 	fallbackCertTarget := flag.String("t", "", "Hostname/IP to use in certificate in case client provides no SNI")
 	connSpecName := flag.String("p", "", "Connection profile to use")
+	dialTimeout := flag.Duration("dt", 5*time.Second, "Request dial timeout")
 	flag.Parse()
 
 	var hj hijackers.Hijacker
 	switch {
 	case *tlsPassthrough:
-		hj = hijackers.NewPassThroughHijacker()
+		hj = hijackers.NewPassThroughHijacker(*dialTimeout)
 	default:
-		hj = getUtlsHijacker(*certFile, *keyFile, *keyLogFile, *fallbackCertTarget, *connSpecName, *allowInsecure)
+		hj = getUtlsHijacker(*certFile, *keyFile, *keyLogFile, *fallbackCertTarget, *connSpecName, *allowInsecure, *dialTimeout)
 	}
 
 	proxy := goproxy.NewProxyHttpServer()
@@ -45,10 +48,18 @@ func main() {
 				}, host
 			}))
 	proxy.Verbose = *verbose
+
+	go func() { // profiling
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 	log.Fatal(http.ListenAndServe(*addr, proxy))
 }
 
-func getUtlsHijacker(certFile, keyFile, keyLogFile, fallbackCertTarget, connSpecName string, allowInsecure bool) hijackers.Hijacker {
+func getUtlsHijacker(
+	certFile, keyFile, keyLogFile, fallbackCertTarget, connSpecName string,
+	allowInsecure bool,
+	dialTimeout time.Duration,
+) hijackers.Hijacker {
 	var certs []tls.Certificate
 
 	if certFile == "" || keyFile == "" {
@@ -73,5 +84,5 @@ func getUtlsHijacker(certFile, keyFile, keyLogFile, fallbackCertTarget, connSpec
 		log.Fatalf("Error creating certificate generator: %v", err)
 	}
 
-	return hijackers.NewUTLSHijacker(connSpecName, allowInsecure, keyLogWriter, cg.GenChildCert)
+	return hijackers.NewUTLSHijacker(connSpecName, allowInsecure, keyLogWriter, cg.GenChildCert, dialTimeout)
 }

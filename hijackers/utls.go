@@ -8,8 +8,8 @@ import (
 	"log"
 	"net"
 	"net/url"
+	"time"
 	"tls_mirror/utils"
-	"tls_mirror/utls_factory"
 )
 
 type utlsHijacker struct {
@@ -18,6 +18,7 @@ type utlsHijacker struct {
 	clientTLSConfig  *tls.Config
 	remoteUTLSConfig *utls.Config
 	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error)
+	dialTimeout      time.Duration
 }
 
 func NewUTLSHijacker(
@@ -25,6 +26,7 @@ func NewUTLSHijacker(
 	allowInsecure bool,
 	keyLogWriter io.Writer,
 	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error),
+	dialTimeout time.Duration,
 ) Hijacker {
 	return &utlsHijacker{
 		connSpecName:  connSpecName,
@@ -36,55 +38,34 @@ func NewUTLSHijacker(
 			KeyLogWriter: keyLogWriter,
 		},
 		generateCertFunc: generateCertFunc,
+		dialTimeout:      dialTimeout,
 	}
 }
 
-func (h *utlsHijacker) GetConns(url *url.URL, clientConn net.Conn) (net.Conn, net.Conn, error) {
-	var hostname string
-	if net.ParseIP(url.Hostname()) == nil {
-		hostname = url.Hostname()
-	}
-
-	clientConnOrig, clientConnCopy := utils.NewTeeConn(clientConn)
-
+func (h *utlsHijacker) GetConns(url *url.URL, clientRaw net.Conn) (net.Conn, net.Conn, error) {
 	var remoteConn net.Conn
-	alpnCh := make(chan []string)
+
+	clientConnOrig, clientConnCopy := utils.NewTeeConn(clientRaw)
+
+	fpCh := make(chan *fpResult, 1) // Buffered to prevent racy deadlock between Handshake and extractALPN
 	alpnErrCh := make(chan error)
 	clientConfig := h.clientTLSConfig.Clone()
-	clientConfig.GetCertificate = h.clientHelloCallback(url, clientConfig, &remoteConn, alpnCh, alpnErrCh)
+	clientConfig.GetCertificate = h.clientHelloCallback(url, clientConfig, &remoteConn, fpCh, alpnErrCh)
 	plaintextConn := tls.Server(clientConnOrig, clientConfig)
 	_, err := clientConnOrig.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	go h.extractALPN(clientConnCopy, alpnCh, alpnErrCh)
+	go h.extractALPN(clientConnCopy, fpCh, alpnErrCh)
 
-	if err := plaintextConn.Handshake(); err != nil {
-		return nil, nil, err
-	}
-	cs := plaintextConn.ConnectionState()
-	sni := cs.ServerName
+	return plaintextConn, remoteConn, plaintextConn.Handshake() // Return connections so they can be closed
+}
 
-	remotePlaintextConn, err := net.Dial("tcp", url.Host)
-	if err != nil {
-		remotePlaintextConn.Close()
-		return nil, nil, err
-	}
-	remoteConfig := h.remoteUTLSConfig.Clone()
-	switch {
-	case sni != "":
-		remoteConfig.ServerName = sni
-	case hostname != "":
-		remoteConfig.ServerName = hostname
-	default:
-		if !h.allowInsecure {
-			return nil, nil, fmt.Errorf("no SNI or name provided and InsecureSkipVerify == false")
-		}
-		remoteConfig.InsecureSkipVerify = true
-	}
-
-	return plaintextConn, remoteConn, err
+// fpRes is a container struct for client`s clientHello fingerprinting results
+type fpResult struct {
+	helloSpec  *utls.ClientHelloSpec
+	nextProtos []string
 }
 
 // clientHelloCallback performs the following tasks:
@@ -100,19 +81,33 @@ func (h *utlsHijacker) clientHelloCallback(
 	target *url.URL,
 	clientConfig *tls.Config,
 	remoteConnRes *net.Conn,
-	alpnCh chan []string,
+	alpnCh chan *fpResult,
 	errCh chan error,
 ) func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 	return func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		log.Printf("Handshake callback")
 		var hostname string
 		if net.ParseIP(target.Hostname()) == nil {
 			hostname = target.Hostname()
 		}
 		sni := info.ServerName
-		remotePlaintextConn, err := net.Dial("tcp", target.Host)
+		// Timeout must be set. Otherwise, dialing will never succeed if the first address
+		// returned by resolver is not responding (connection will just hang forever).
+		d := net.Dialer{
+			Timeout: h.dialTimeout,
+		}
+		remotePlaintextConn, err := d.Dial("tcp", target.Host)
 		if err != nil {
 			return nil, err
 		}
+		log.Printf("Remote conn established")
+		needClose := true
+		defer func() {
+			if needClose {
+				log.Printf("Closing remotePlaintextConn")
+				remotePlaintextConn.Close()
+			}
+		}()
 		remoteConfig := h.remoteUTLSConfig.Clone()
 		switch {
 		case sni != "":
@@ -126,17 +121,20 @@ func (h *utlsHijacker) clientHelloCallback(
 			remoteConfig.InsecureSkipVerify = true
 		}
 
-		var nextProtos []string
+		var fpRes *fpResult
 
+		log.Printf("Wait for extractALPN")
 		select {
 		case err := <-errCh:
 			return nil, fmt.Errorf("error extracting ALPN: %v", err)
-		case nextProtos = <-alpnCh:
+		case fpRes = <-alpnCh:
 			break
 		}
+		log.Printf("Done extractALPN")
+
 		remoteConn := utls.UClient(remotePlaintextConn, remoteConfig, utls.HelloCustom)
 		*remoteConnRes = remoteConn // Pass connection back
-		spec := utls_factory.GetConnSpecWithALPN(h.connSpecName, nextProtos)
+		spec := fpRes.helloSpec
 		if spec == nil {
 			return nil, fmt.Errorf("invalid connection spec name %s", h.connSpecName)
 		}
@@ -146,6 +144,8 @@ func (h *utlsHijacker) clientHelloCallback(
 		if sni != "" {
 			remoteConn.SetSNI(sni)
 		}
+		log.Printf("Remote handshake")
+
 		err = remoteConn.Handshake()
 		if err != nil {
 			return nil, err
@@ -158,11 +158,18 @@ func (h *utlsHijacker) clientHelloCallback(
 			clientConfig.NextProtos = []string{alpnRes}
 		}
 
-		return generateCert(info, target.Hostname(), h.generateCertFunc)
+		log.Printf("Certificate generation")
+
+		cert, err := generateCert(info, target.Hostname(), h.generateCertFunc)
+		if err != nil {
+			return nil, err
+		}
+		needClose = false
+		return cert, nil
 	}
 }
 
-func (h *utlsHijacker) extractALPN(tlsRawCopy io.Reader, resCh chan []string, errCh chan error) {
+func (h *utlsHijacker) extractALPN(tlsRawCopy io.Reader, fpResCh chan *fpResult, errCh chan error) {
 	tlsHeader := make([]byte, 5)
 	n, err := io.ReadAtLeast(tlsRawCopy, tlsHeader, 5)
 	if err != nil {
@@ -190,17 +197,41 @@ func (h *utlsHijacker) extractALPN(tlsRawCopy io.Reader, resCh chan []string, er
 		errCh <- fmt.Errorf("TLS body: read error: %v", err)
 		return
 	}
-	clientHello, err := utls.UnmarshalClientHello(clientHelloBody)
-	if err != nil {
-		errCh <- err
+	clientHello := utls.UnmarshalClientHello(clientHelloBody)
+	if clientHello == nil {
+		errCh <- fmt.Errorf("failed to unmarshal clientHello")
 		return
 	}
 	nextProtos := clientHello.AlpnProtocols
 	log.Printf("Client ALPN offers: %v", nextProtos)
-	resCh <- nextProtos
-	_, err = io.Copy(io.Discard, tlsRawCopy) // Sink remained data - we don't need them
-	if err != nil {
-		errCh <- err
+
+	f := utls.Fingerprinter{
+		KeepPSK:           false,
+		AllowBluntMimicry: true,
+		AlwaysAddPadding:  false,
 	}
+	clientHelloSpec, err := f.FingerprintClientHello(append(tlsHeader, clientHelloBody...))
+	if err != nil {
+		log.Printf("Client hello fingerprinting error %v", err)
+		errCh <- err
+		return
+	}
+	log.Printf("Sending fpRes")
+	fpResCh <- &fpResult{
+		helloSpec:  clientHelloSpec,
+		nextProtos: nextProtos,
+	}
+
+	log.Printf("Start sinking ALPN copy")
+	_, err = io.Copy(io.Discard, tlsRawCopy) // Sink remaining data - we don't need them
+	if err != nil {
+		netOpError, ok := err.(*net.OpError)
+		if ok && netOpError.Err.Error() != "use of closed network connection" {
+			log.Printf("Sinking failed, error: %v", err)
+			errCh <- err
+		}
+	}
+
+	log.Printf("Sinking done, error: %v", err)
 	return
 }

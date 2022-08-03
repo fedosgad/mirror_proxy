@@ -28,7 +28,7 @@ func NewStdlibHijacker(
 	}
 }
 
-func (h *stdlibHijacker) GetConns(url *url.URL, clientConn net.Conn) (net.Conn, net.Conn, error) {
+func (h *stdlibHijacker) GetConns(url *url.URL, clientRaw net.Conn) (net.Conn, net.Conn, error) {
 	var ips, names []string
 	target := []string{url.Hostname()}
 	if net.ParseIP(target[0]) == nil {
@@ -38,12 +38,12 @@ func (h *stdlibHijacker) GetConns(url *url.URL, clientConn net.Conn) (net.Conn, 
 	}
 	config := h.clientTLSConfig.Clone()
 	config.GetCertificate = h.certGenConstructor(ips, names)
-	plaintextConn := tls.Server(clientConn, config)
+	plaintextConn := tls.Server(clientRaw, config)
 
 	remoteConn, err := tls.Dial("tcp", url.Host, h.remoteTLSConfig.Clone())
 	if err != nil {
 		return nil, nil, err
 	}
-	_, err = clientConn.Write([]byte("HTTP/1.1 200 Ok\r\n\r\n"))
+	_, err = clientRaw.Write([]byte("HTTP/1.1 200 Ok\r\n\r\n"))
 	return plaintextConn, remoteConn, err
 }

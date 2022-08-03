@@ -86,7 +86,7 @@ func main() {
 	var hj hijackers.Hijacker
 	switch {
 	case *tlsPassthrough:
-		hj = hijackers.NewPassThroughHijacker()
+		hj = hijackers.NewPassThroughHijacker(0)
 	default:
 		hj = getUtlsHijacker(*certFile, *keyFile, *keyLogFile, *fallbackCertTarget, *connSpecName, *allowInsecure)
 	}

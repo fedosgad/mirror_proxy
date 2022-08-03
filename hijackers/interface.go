@@ -5,6 +5,10 @@ import (
 	"net/url"
 )
 
+// StatusReporter is a callback function that informs client on upstream connection status.
+// Intended use - writing "200 OK"/"50x error" to client
+type StatusReporter func(successful bool)
+
 // Hijacker is an entity of connection interceptor.
 type Hijacker interface {
 	// GetConns creates server connection and optionally wraps clientRaw into client.

@@ -2,6 +2,8 @@ module tls_mirror
 
 go 1.18
 
+replace github.com/getlantern/utls v0.0.0-20211116192935-1abdc4b1acab => github.com/refraction-networking/utls v1.1.1
+
 require (
 	github.com/elazarl/goproxy v0.0.0-20220529153421-8ea89ba92021
 	github.com/getlantern/utls v0.0.0-20211116192935-1abdc4b1acab

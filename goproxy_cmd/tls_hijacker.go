@@ -10,7 +10,7 @@ import (
 	"tls_mirror/hijackers"
 )
 
-func getTLSHijackFunc(hj hijackers.Hijacker) func(req *http.Request, connL net.Conn, ctx *goproxy.ProxyCtx) {
+func getTLSHijackFunc(hj hijackers.Hijacker) func(*http.Request, net.Conn, *goproxy.ProxyCtx) {
 	return func(req *http.Request, connL net.Conn, ctx *goproxy.ProxyCtx) {
 		var err error
 		var tlsConnR net.Conn
