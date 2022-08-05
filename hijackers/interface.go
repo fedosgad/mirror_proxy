@@ -5,6 +5,11 @@ import (
 	"net/url"
 )
 
+type Logger interface {
+	Logf(msg string, argv ...interface{})
+	Warnf(msg string, argv ...interface{})
+}
+
 // StatusReporter is a callback function that informs client on upstream connection status.
 // Intended use - writing "200 OK"/"50x error" to client
 type StatusReporter func(successful bool)

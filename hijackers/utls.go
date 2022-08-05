@@ -49,9 +49,9 @@ func (h *utlsHijacker) GetConns(url *url.URL, clientRaw net.Conn) (net.Conn, net
 
 	fpCh := make(chan *fpResult, 1) // Buffered to prevent racy deadlock between Handshake and extractALPN
 	alpnErrCh := make(chan error)
-	clientConfig := h.clientTLSConfig.Clone()
-	clientConfig.GetCertificate = h.clientHelloCallback(url, clientConfig, &remoteConn, fpCh, alpnErrCh)
-	plaintextConn := tls.Server(clientConnOrig, clientConfig)
+	clientConfigTemplate := h.clientTLSConfig.Clone()
+	clientConfigTemplate.GetConfigForClient = h.clientHelloCallback(url, clientConfigTemplate, &remoteConn, fpCh, alpnErrCh)
+	plaintextConn := tls.Server(clientConnOrig, clientConfigTemplate)
 	_, err := clientConnOrig.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
 	if err != nil {
 		return nil, nil, err
@@ -77,14 +77,8 @@ type fpResult struct {
 // - set correct ALPN for client connection using  server response
 //
 // - generate certificate for client (according to client's SNI)
-func (h *utlsHijacker) clientHelloCallback(
-	target *url.URL,
-	clientConfig *tls.Config,
-	remoteConnRes *net.Conn,
-	alpnCh chan *fpResult,
-	errCh chan error,
-) func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+func (h *utlsHijacker) clientHelloCallback(target *url.URL, clientConfigTemplate *tls.Config, remoteConnRes *net.Conn, alpnCh chan *fpResult, errCh chan error) func(*tls.ClientHelloInfo) (*tls.Config, error) {
+	return func(info *tls.ClientHelloInfo) (*tls.Config, error) {
 		log.Printf("Handshake callback")
 		var hostname string
 		if net.ParseIP(target.Hostname()) == nil {
@@ -151,6 +145,9 @@ func (h *utlsHijacker) clientHelloCallback(
 			return nil, err
 		}
 
+		clientConfig := clientConfigTemplate.Clone()
+		clientConfig.GetConfigForClient = nil
+
 		cs := remoteConn.ConnectionState()
 		alpnRes := cs.NegotiatedProtocol
 		if alpnRes != "" {
@@ -164,8 +161,10 @@ func (h *utlsHijacker) clientHelloCallback(
 		if err != nil {
 			return nil, err
 		}
+		clientConfig.Certificates = []tls.Certificate{*cert}
+
 		needClose = false
-		return cert, nil
+		return clientConfig, nil
 	}
 }
 
