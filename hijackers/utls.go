@@ -8,19 +8,24 @@ import (
 	"mirror_proxy/utils"
 	"net"
 	"net/url"
-	"time"
 )
 
 type utlsHijacker struct {
+	dialer           Dialer
 	allowInsecure    bool
 	clientTLSConfig  *tls.Config
 	remoteUTLSConfig *utls.Config
 	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error)
-	dialTimeout      time.Duration
 }
 
-func NewUTLSHijacker(allowInsecure bool, keyLogWriter io.Writer, generateCertFunc func(ips []string, names []string) (*tls.Certificate, error), dialTimeout time.Duration) Hijacker {
+func NewUTLSHijacker(
+	dialer Dialer,
+	allowInsecure bool,
+	keyLogWriter io.Writer,
+	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error),
+) Hijacker {
 	return &utlsHijacker{
+		dialer:        dialer,
 		allowInsecure: allowInsecure,
 		clientTLSConfig: &tls.Config{
 			KeyLogWriter: keyLogWriter,
@@ -29,7 +34,6 @@ func NewUTLSHijacker(allowInsecure bool, keyLogWriter io.Writer, generateCertFun
 			KeyLogWriter: keyLogWriter,
 		},
 		generateCertFunc: generateCertFunc,
-		dialTimeout:      dialTimeout,
 	}
 }
 
@@ -80,12 +84,7 @@ func (h *utlsHijacker) clientHelloCallback(
 			hostname = target.Hostname()
 		}
 		sni := info.ServerName
-		// Timeout must be set. Otherwise, dialing will never succeed if the first address
-		// returned by resolver is not responding (connection will just hang forever).
-		d := net.Dialer{
-			Timeout: h.dialTimeout,
-		}
-		remotePlaintextConn, err := d.Dial("tcp", target.Host)
+		remotePlaintextConn, err := h.dialer.Dial("tcp", target.Host)
 		if err != nil {
 			return nil, err
 		}

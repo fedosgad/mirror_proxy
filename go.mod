@@ -8,6 +8,8 @@ require (
 	github.com/cosiner/flag v0.5.2
 	github.com/elazarl/goproxy v0.0.0-20220529153421-8ea89ba92021
 	github.com/getlantern/utls v0.0.0-20211116192935-1abdc4b1acab
+	github.com/mwitkow/go-http-dialer v0.0.0-20161116154839-378f744fb2b8
+	golang.org/x/net v0.0.0-20211111160137-58aab5ef257a
 )
 
 require (

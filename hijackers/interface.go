@@ -23,3 +23,7 @@ type Logger interface {
 	Logf(msg string, argv ...interface{})
 	Warnf(msg string, argv ...interface{})
 }
+
+type Dialer interface {
+	Dial(network string, addr string) (c net.Conn, err error)
+}

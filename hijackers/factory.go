@@ -3,12 +3,10 @@ package hijackers
 import (
 	"crypto/tls"
 	"io"
-
-	"time"
 )
 
 type HijackerFactory struct {
-	dialTimeout time.Duration
+	dialer Dialer
 
 	allowInsecure    bool
 	keyLogWriter     io.Writer
@@ -16,13 +14,13 @@ type HijackerFactory struct {
 }
 
 func NewHijackerFactory(
-	dialTimeout time.Duration,
+	dialer Dialer,
 	allowInsecure bool,
 	keyLogWriter io.Writer,
 	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error),
 ) *HijackerFactory {
 	return &HijackerFactory{
-		dialTimeout:      dialTimeout,
+		dialer:           dialer,
 		allowInsecure:    allowInsecure,
 		keyLogWriter:     keyLogWriter,
 		generateCertFunc: generateCertFunc,
@@ -32,13 +30,13 @@ func NewHijackerFactory(
 func (hf *HijackerFactory) Get(mode string) Hijacker {
 	switch mode {
 	case ModePassthrough:
-		return NewPassThroughHijacker(hf.dialTimeout)
+		return NewPassThroughHijacker(hf.dialer)
 	case ModeMITM:
 		return NewUTLSHijacker(
+			hf.dialer,
 			hf.allowInsecure,
 			hf.keyLogWriter,
 			hf.generateCertFunc,
-			hf.dialTimeout,
 		)
 	default:
 		return nil

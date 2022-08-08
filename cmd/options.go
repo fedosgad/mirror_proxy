@@ -13,13 +13,16 @@ type Options struct {
 
 	Mode string `names:"--mode, -m" usage:"Operation mode (available: mitm, passthrough)" default:"mitm"`
 
-	CertFile   string `names:"--certificate, -c" usage:"Path to root CA certificate" default:""`
-	KeyFile    string `names:"--key, -k" usage:"Path to root CA key" default:""`
-	SSLLogFile string `names:"--sslkeylog, -s" usage:"Path to SSL/TLS secrets log file" default:"ssl.log"`
+	DialTimeout     time.Duration `names:"-"`
+	DialTimeoutArg  string        `names:"--dial-timeout, -dt" usage:"Remote host dialing timeout" default:"5s"`
+	ProxyAddr       string        `names:"--proxy, -p" usage:"Upstream proxy address (direct connection if empty)" default:""`
+	ProxyTimeout    time.Duration `names:"-"`
+	ProxyTimeoutArg string        `names:"--proxy-timeout, -pt" usage:"Upstream proxy timeout" default:"5s"`
 
-	AllowInsecure  bool          `names:"--insecure, -i" usage:"Allow connecting to insecure remote hosts" default:"false"`
-	DialTimeout    time.Duration `names:"-"`
-	DialTimeoutArg string        `names:"--dial-timeout, -dt" usage:"Remote host dialing timeout" default:"5s"`
+	CertFile      string `names:"--certificate, -c" usage:"Path to root CA certificate" default:""`
+	KeyFile       string `names:"--key, -k" usage:"Path to root CA key" default:""`
+	SSLLogFile    string `names:"--sslkeylog, -s" usage:"Path to SSL/TLS secrets log file" default:"ssl.log"`
+	AllowInsecure bool   `names:"--insecure, -i" usage:"Allow connecting to insecure remote hosts" default:"false"`
 }
 
 func getOptions() *Options {
@@ -28,11 +31,8 @@ func getOptions() *Options {
 	if err != nil {
 		log.Fatal(err)
 	}
-	dialTimeout, err := time.ParseDuration(opts.DialTimeoutArg)
-	if err != nil {
-		log.Fatal(err)
-	}
-	opts.DialTimeout = dialTimeout
+	parseDuration(opts.DialTimeoutArg, &opts.DialTimeout)
+	parseDuration(opts.ProxyTimeoutArg, &opts.ProxyTimeout)
 	opts.check()
 	return opts
 }
@@ -60,4 +60,12 @@ func (o Options) check() {
 		log.Println("Warning: timeout=0, connections may hang!")
 	}
 	return
+}
+
+func parseDuration(inp string, res *time.Duration) {
+	d, err := time.ParseDuration(inp)
+	if err != nil {
+		log.Fatal(err)
+	}
+	*res = d
 }
