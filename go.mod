@@ -1,4 +1,4 @@
-module tls_mirror
+module mirror_proxy
 
 go 1.18
 

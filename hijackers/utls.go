@@ -5,10 +5,10 @@ import (
 	"fmt"
 	utls "github.com/getlantern/utls"
 	"io"
+	"mirror_proxy/utils"
 	"net"
 	"net/url"
 	"time"
-	"tls_mirror/utils"
 )
 
 type utlsHijacker struct {

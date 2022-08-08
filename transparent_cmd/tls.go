@@ -3,10 +3,10 @@ package main
 import (
 	"io"
 	"log"
+	"mirror_proxy/hijackers"
 	"net"
 	"net/url"
 	"sync"
-	"tls_mirror/hijackers"
 )
 
 func handleTLSConn(connL net.Conn, fallbackTarget *url.URL, hj hijackers.Hijacker) {

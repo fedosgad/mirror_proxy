@@ -3,11 +3,11 @@ package main
 import (
 	"github.com/elazarl/goproxy"
 	"io"
+	"mirror_proxy/hijackers"
+	"mirror_proxy/utils"
 	"net"
 	"net/http"
 	"sync"
-	"tls_mirror/hijackers"
-	"tls_mirror/utils"
 )
 
 func getTLSHijackFunc(hj hijackers.Hijacker) func(*http.Request, net.Conn, *goproxy.ProxyCtx) {
@@ -22,7 +22,7 @@ func getTLSHijackFunc(hj hijackers.Hijacker) func(*http.Request, net.Conn, *gopr
 			_ = tlsConnR.Close()
 		}
 
-		tlsConnL, tlsConnR, err := hj.GetConns(req.URL, connL, nil)
+		tlsConnL, tlsConnR, err := hj.GetConns(req.URL, connL, ctx)
 		if err != nil {
 			ctx.Warnf("Couldn't connect: %v", err)
 			return

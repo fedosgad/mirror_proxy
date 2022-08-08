@@ -4,11 +4,11 @@ import (
 	"flag"
 	"io"
 	"log"
+	"mirror_proxy/cert_generator"
+	"mirror_proxy/hijackers"
 	"net"
 	"net/url"
 	"os"
-	"tls_mirror/cert_generator"
-	"tls_mirror/hijackers"
 )
 
 var reqCounter = 0

@@ -4,11 +4,11 @@ import (
 	"github.com/elazarl/goproxy"
 	"io"
 	"log"
+	"mirror_proxy/cert_generator"
+	"mirror_proxy/hijackers"
 	"net/http"
 	"os"
 	"regexp"
-	"tls_mirror/cert_generator"
-	"tls_mirror/hijackers"
 )
 
 func main() {
