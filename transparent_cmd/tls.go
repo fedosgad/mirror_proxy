@@ -20,7 +20,7 @@ func handleTLSConn(connL net.Conn, fallbackTarget *url.URL, hj hijackers.Hijacke
 		_ = tlsConnR.Close()
 	}
 
-	tlsConnL, tlsConnR, err := hj.GetConns(fallbackTarget, connL)
+	tlsConnL, tlsConnR, err := hj.GetConns(fallbackTarget, connL, nil)
 	if err != nil {
 		log.Printf("[x] Couldn't connect: %v", err)
 		return

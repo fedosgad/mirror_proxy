@@ -13,20 +13,19 @@ import (
 )
 
 type CertificateGenerator struct {
-	ca             tls.Certificate
-	caX509         *x509.Certificate
-	fallbackTarget string
+	ca     tls.Certificate
+	caX509 *x509.Certificate
 }
 
-func NewCertGenerator(ca tls.Certificate, fallbackTarget string) (*CertificateGenerator, error) {
+func NewCertGenerator(ca tls.Certificate) (*CertificateGenerator, error) {
 	caX509, err := x509.ParseCertificate(ca.Certificate[0])
 	if err != nil {
 		return nil, err
 	}
-	return &CertificateGenerator{ca: ca, caX509: caX509, fallbackTarget: fallbackTarget}, nil
+	return &CertificateGenerator{ca: ca, caX509: caX509}, nil
 }
 
-func NewCertGeneratorFromFiles(certFile, keyFile, fallbackCertTarget string) (*CertificateGenerator, error) {
+func NewCertGeneratorFromFiles(certFile, keyFile string) (*CertificateGenerator, error) {
 	var certs []tls.Certificate
 	if certFile == "" || keyFile == "" {
 		return nil, fmt.Errorf("certificate and key files required")
@@ -36,7 +35,7 @@ func NewCertGeneratorFromFiles(certFile, keyFile, fallbackCertTarget string) (*C
 		return nil, err
 	}
 	certs = []tls.Certificate{cert}
-	return NewCertGenerator(certs[0], fallbackCertTarget)
+	return NewCertGenerator(certs[0])
 }
 
 func (cg *CertificateGenerator) GenChildCert(ips, names []string) (*tls.Certificate, error) {

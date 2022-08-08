@@ -35,7 +35,7 @@ func main() {
 		}
 	}
 
-	cg, err := cert_generator.NewCertGeneratorFromFiles(*certFile, *keyFile, *fallbackCertTarget)
+	cg, err := cert_generator.NewCertGeneratorFromFiles(*certFile, *keyFile)
 	if err != nil {
 		log.Fatal(err)
 	}

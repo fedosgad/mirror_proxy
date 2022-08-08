@@ -16,7 +16,7 @@ func NewPassThroughHijacker(dialTimeout time.Duration) Hijacker {
 	}
 }
 
-func (h *passThroughHijacker) GetConns(url *url.URL, clientRaw net.Conn) (net.Conn, net.Conn, error) {
+func (h *passThroughHijacker) GetConns(url *url.URL, clientRaw net.Conn, _ Logger) (net.Conn, net.Conn, error) {
 	d := net.Dialer{
 		Timeout: h.dialTimeout,
 	}
@@ -24,6 +24,6 @@ func (h *passThroughHijacker) GetConns(url *url.URL, clientRaw net.Conn) (net.Co
 	if err != nil {
 		return nil, nil, err
 	}
-	_, err = clientRaw.Write([]byte("HTTP/1.0 200 Connection established\r\n\r\n"))
+	_, err = clientRaw.Write([]byte("HTTP/1.0 200 OK\r\n\r\n"))
 	return clientRaw, remoteConn, err
 }
