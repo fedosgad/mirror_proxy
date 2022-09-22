@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	utls "github.com/getlantern/utls"
 	"net"
 	"time"
 )
@@ -45,18 +44,6 @@ func (cg *CertificateGenerator) GenChildCert(ips, names []string) (*tls.Certific
 	}
 
 	return &tls.Certificate{
-		Certificate: [][]byte{cab},
-		PrivateKey:  private,
-	}, nil
-}
-
-func (cg *CertificateGenerator) GenChildCertUTLS(ips, names []string) (*utls.Certificate, error) {
-	private, cab, err := cg.genCertBytes(ips, names)
-	if err != nil {
-		return nil, err
-	}
-
-	return &utls.Certificate{
 		Certificate: [][]byte{cab},
 		PrivateKey:  private,
 	}, nil

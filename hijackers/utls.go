@@ -3,7 +3,7 @@ package hijackers
 import (
 	"crypto/tls"
 	"fmt"
-	utls "github.com/getlantern/utls"
+	utls "github.com/refraction-networking/utls"
 	"io"
 	"mirror_proxy/utils"
 	"net"
@@ -160,6 +160,24 @@ func (h *utlsHijacker) clientHelloCallback(
 		needClose = false
 		return clientConfig, nil
 	}
+}
+
+func generateCert(
+	info *tls.ClientHelloInfo,
+	target string,
+	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error),
+) (*tls.Certificate, error) {
+	sni := info.ServerName
+	if sni != "" {
+		return generateCertFunc(nil, []string{sni})
+	}
+	var ip, name []string
+	if net.ParseIP(target) == nil {
+		name = []string{target}
+	} else {
+		ip = []string{target}
+	}
+	return generateCertFunc(ip, name)
 }
 
 // clientHelloFingerprinter holds variables related to client TLS fingerprinting

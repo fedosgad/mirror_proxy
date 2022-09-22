@@ -37,7 +37,3 @@ func (tc TeeConn) Close() error {
 	}
 	return nil
 }
-
-func (tc TeeConn) GetTeeReader() io.Reader {
-	return tc.teeOut
-}

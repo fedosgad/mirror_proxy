@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/elazarl/goproxy"
-	http_dialer "github.com/mwitkow/go-http-dialer"
+	http_dialer "github.com/fedosgad/go-http-dialer"
 	"golang.org/x/net/proxy"
 	"io"
 	"log"
@@ -23,6 +23,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error opening key log file: %v", err)
 	}
+	defer klw.Close()
+
 	cg, err := cert_generator.NewCertGeneratorFromFiles(opts.CertFile, opts.KeyFile)
 	if err != nil {
 		log.Fatal(err)
@@ -59,9 +61,17 @@ func main() {
 	log.Fatal(http.ListenAndServe(opts.ListenAddress, p))
 }
 
-func getSSLLogWriter(opts *Options) (io.Writer, error) {
-	var err error
-	klw := io.Discard
+type writeNopCloser struct {
+	io.Writer
+}
+
+func (c writeNopCloser) Close() error {
+	return nil
+}
+
+func getSSLLogWriter(opts *Options) (klw io.WriteCloser, err error) {
+	klw = writeNopCloser{Writer: io.Discard}
+
 	if opts.SSLLogFile != "" {
 		klw, err = os.OpenFile(opts.SSLLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	}
@@ -85,7 +95,6 @@ func getDialer(opts *Options) (proxy.Dialer, error) {
 		return proxy.FromURL(proxyURL, d)
 	}
 	if proxyURL.Scheme == "http" || proxyURL.Scheme == "https" {
-		// TODO(fgruzdev): add context support to http_dialer
 		if proxyURL.User != nil {
 			pass, _ := proxyURL.User.Password()
 			username := proxyURL.User.Username()
@@ -93,13 +102,13 @@ func getDialer(opts *Options) (proxy.Dialer, error) {
 				proxyURL,
 				http_dialer.WithProxyAuth(http_dialer.AuthBasic(username, pass)),
 				http_dialer.WithConnectionTimeout(opts.ProxyTimeout),
-				http_dialer.WithDialer(d),
+				http_dialer.WithContextDialer(d),
 			), nil
 		}
 		return http_dialer.New(
 			proxyURL,
 			http_dialer.WithConnectionTimeout(opts.ProxyTimeout),
-			http_dialer.WithDialer(d),
+			http_dialer.WithContextDialer(d),
 		), nil
 	}
 
