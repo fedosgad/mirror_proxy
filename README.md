@@ -58,11 +58,11 @@ unaltered.
 Installation:
 ```shell
 git clone https://github.com/fedosgad/mirror_proxy
-cd mirror_proxy/cmd
+cd mirror_proxy/
 ```
 Then:
 ```shell
-go build -o mirror_proxy
+go build
 ./mirror_proxy -h
 ```
 or (this automatically uses certificate and key from installed `mitmproxy`)
