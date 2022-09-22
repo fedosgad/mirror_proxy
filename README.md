@@ -62,11 +62,10 @@ cd mirror_proxy/cmd
 ```
 Then:
 ```shell
-go build -o mitmproxy
-
+go build -o mirror_proxy
 ./mirror_proxy -h
 ```
-or (this automatically uses certificate and key from installed mitmproxy)
+or (this automatically uses certificate and key from installed `mitmproxy`)
 ```shell
 ./mirror.sh -h
 ```
