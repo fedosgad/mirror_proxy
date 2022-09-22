@@ -1,7 +1,7 @@
 TLS MITM proxy for reverse-engineering purposes
 ===
 
-# Why
+## Why
 
 It is often necessary to decrypt TLS traffic when reverse-engineering applications.
 This can easily be done with tools like [mitmproxy](https://github.com/mitmproxy/mitmproxy).
@@ -11,7 +11,7 @@ cannot be easily configured to mimic given fingerprint (if you know how to do it
 open issue and tell me). Servers can detect this and refuse connection or disallow access 
 (for example, Cloudflare often does this).
 
-# What
+## What
 
 This tool is written to address these problems using awesome [utls](https://github.com/refraction-networking/utls)
 library. For software under test (SUT) it looks like a usual HTTP proxy. When SUT connects through it, ClientHello
@@ -37,7 +37,7 @@ to record and inspect traffic passively.
 --------------           ---------------
 ```
 
-# How
+## How
 
 This tool only logs encryption keys and does not record traffic. You need a sniffer. Wireshark has been tested, 
 so instruction assumes it is used.
@@ -53,7 +53,7 @@ Proxy can connect to target server through another proxy (`-p`, HTTP(S) and SOCK
 Additionally, you can disable decryption completely (`-m passthrough`) - all connection data will be forwarded
 unaltered.
 
-# What else
+## What else
 
 Installation:
 ```shell
