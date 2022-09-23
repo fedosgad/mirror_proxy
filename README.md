@@ -57,12 +57,17 @@ unaltered.
 
 Installation:
 ```shell
+go install github.com/fedosgad/mirror_proxy@latest
+```
+
+Manual build and run:
+```shell
 git clone https://github.com/fedosgad/mirror_proxy
 cd mirror_proxy/
-```
-Then:
-```shell
 go build
+```
+then
+```shell
 ./mirror_proxy -h
 ```
 or (this automatically uses certificate and key from installed `mitmproxy`)
@@ -88,5 +93,4 @@ Flags:
     --sslkeylog, -s         Path to SSL/TLS secrets log file                          (type: string; default: ssl.log)
     --insecure, -i          Allow connecting to insecure remote hosts                 (type: bool; default: false)
     -h, --help              show help                                                 (type: bool)
-
 ```

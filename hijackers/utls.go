@@ -3,9 +3,9 @@ package hijackers
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/fedosgad/mirror_proxy/utils"
 	utls "github.com/refraction-networking/utls"
 	"io"
-	"mirror_proxy/utils"
 	"net"
 	"net/url"
 )

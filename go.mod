@@ -1,4 +1,4 @@
-module mirror_proxy
+module github.com/fedosgad/mirror_proxy
 
 go 1.18
 

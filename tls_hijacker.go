@@ -2,9 +2,9 @@ package main
 
 import (
 	"github.com/elazarl/goproxy"
+	"github.com/fedosgad/mirror_proxy/hijackers"
+	"github.com/fedosgad/mirror_proxy/utils"
 	"io"
-	"mirror_proxy/hijackers"
-	"mirror_proxy/utils"
 	"net"
 	"net/http"
 	"sync"
