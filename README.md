@@ -43,8 +43,8 @@ This tool only logs encryption keys and does not record traffic. You need a snif
 so instruction assumes it is used.
 
 1. Generate and install root certificate for next step (`cert.pem` and `key.pem`)  
-2. Start proxy (`./mirror_proxy -c cert.pem -k key.pem -s sslkeylogfile.log`)
-3. [Configure TLS decryption](https://wiki.wireshark.org/TLS#using-the-pre-master-secret) in Wireshark using `sslkeylogfile.log`
+2. Start proxy (`./mirror_proxy -c cert.pem -k key.pem -s ssl.log`)
+3. [Configure TLS decryption](https://wiki.wireshark.org/TLS#using-the-pre-master-secret) in Wireshark using `ssl.log`
 4. Start traffic capture
 5. Configure SUT to use proxy
 6. Start SUT and begin looking at packets
