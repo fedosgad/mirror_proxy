@@ -6,6 +6,7 @@ import (
 	http_dialer "github.com/fedosgad/go-http-dialer"
 	"github.com/fedosgad/mirror_proxy/cert_generator"
 	"github.com/fedosgad/mirror_proxy/hijackers"
+	utls "github.com/refraction-networking/utls"
 	"golang.org/x/net/proxy"
 	"io"
 	"log"
@@ -29,15 +30,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	dialer, err := getDialer(opts)
 	if err != nil {
 		log.Fatalf("Error getting proxy dialer: %v", err)
 	}
+
+	clientTLsCredentials, err := getClientTLsCredentials(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	hjf := hijackers.NewHijackerFactory(
 		dialer,
 		opts.AllowInsecure,
 		klw,
 		cg.GenChildCert,
+		clientTLsCredentials,
 	)
 	hj := hjf.Get(opts.Mode)
 
@@ -113,4 +122,31 @@ func getDialer(opts *Options) (proxy.Dialer, error) {
 	}
 
 	return nil, fmt.Errorf("cannot use proxy scheme %q", proxyURL.Scheme)
+}
+
+func getClientTLsCredentials(opts *Options) (*hijackers.ClientTLsCredentials, error) {
+	if opts.HostWithMutualTLS == "" {
+		return nil, nil
+	}
+
+	cert, err := os.ReadFile(opts.ClientCertFile)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := os.ReadFile(opts.ClientKeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	certificate, err := utls.X509KeyPair(cert, key)
+	if err != nil {
+		return nil, err
+	}
+
+	clientTLsCredentials := &hijackers.ClientTLsCredentials{
+		Host: opts.HostWithMutualTLS,
+		Cert: certificate,
+	}
+	return clientTLsCredentials, nil
 }

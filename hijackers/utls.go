@@ -3,19 +3,21 @@ package hijackers
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/fedosgad/mirror_proxy/utils"
-	utls "github.com/refraction-networking/utls"
 	"io"
 	"net"
 	"net/url"
+
+	"github.com/fedosgad/mirror_proxy/utils"
+	utls "github.com/refraction-networking/utls"
 )
 
 type utlsHijacker struct {
-	dialer           Dialer
-	allowInsecure    bool
-	clientTLSConfig  *tls.Config
-	remoteUTLSConfig *utls.Config
-	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error)
+	dialer               Dialer
+	allowInsecure        bool
+	clientTLSConfig      *tls.Config
+	remoteUTLSConfig     *utls.Config
+	generateCertFunc     func(ips []string, names []string) (*tls.Certificate, error)
+	clientTLsCredentials *ClientTLsCredentials
 }
 
 func NewUTLSHijacker(
@@ -23,6 +25,7 @@ func NewUTLSHijacker(
 	allowInsecure bool,
 	keyLogWriter io.Writer,
 	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error),
+	clientTlsCredentials *ClientTLsCredentials,
 ) Hijacker {
 	return &utlsHijacker{
 		dialer:        dialer,
@@ -33,7 +36,8 @@ func NewUTLSHijacker(
 		remoteUTLSConfig: &utls.Config{
 			KeyLogWriter: keyLogWriter,
 		},
-		generateCertFunc: generateCertFunc,
+		generateCertFunc:     generateCertFunc,
+		clientTLsCredentials: clientTlsCredentials,
 	}
 }
 
@@ -107,6 +111,13 @@ func (h *utlsHijacker) clientHelloCallback(
 				return nil, fmt.Errorf("no SNI or name provided and InsecureSkipVerify == false")
 			}
 			remoteConfig.InsecureSkipVerify = true
+		}
+
+		if h.clientTLsCredentials != nil && remoteConfig.ServerName == h.clientTLsCredentials.Host {
+			remoteConfig.ClientAuth = utls.RequireAndVerifyClientCert
+			remoteConfig.GetClientCertificate = func(cri *utls.CertificateRequestInfo) (*utls.Certificate, error) {
+				return &h.clientTLsCredentials.Cert, nil
+			}
 		}
 
 		var fpRes *fpResult
@@ -261,6 +272,4 @@ func (f clientHelloFingerprinter) extractALPN() {
 		f.log.Warnf("Sinking failed, error: %v", err)
 		f.errCh <- err
 	}
-
-	return
 }
