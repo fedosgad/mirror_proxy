@@ -3,12 +3,11 @@ package hijackers
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/fedosgad/mirror_proxy/utils"
+	utls "github.com/refraction-networking/utls"
 	"io"
 	"net"
 	"net/url"
-
-	"github.com/fedosgad/mirror_proxy/utils"
-	utls "github.com/refraction-networking/utls"
 )
 
 type utlsHijacker struct {
@@ -17,7 +16,7 @@ type utlsHijacker struct {
 	clientTLSConfig      *tls.Config
 	remoteUTLSConfig     *utls.Config
 	generateCertFunc     func(ips []string, names []string) (*tls.Certificate, error)
-	clientTLsCredentials *ClientTLsCredentials
+	clientTLsCredentials *ClientTLSCredentials
 }
 
 func NewUTLSHijacker(
@@ -25,7 +24,7 @@ func NewUTLSHijacker(
 	allowInsecure bool,
 	keyLogWriter io.Writer,
 	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error),
-	clientTlsCredentials *ClientTLsCredentials,
+	clientTlsCredentials *ClientTLSCredentials,
 ) Hijacker {
 	return &utlsHijacker{
 		dialer:        dialer,
@@ -272,4 +271,6 @@ func (f clientHelloFingerprinter) extractALPN() {
 		f.log.Warnf("Sinking failed, error: %v", err)
 		f.errCh <- err
 	}
+
+	return
 }

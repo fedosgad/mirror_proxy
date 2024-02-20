@@ -20,8 +20,8 @@ type Options struct {
 	ProxyTimeout      time.Duration `names:"-"`
 	ProxyTimeoutArg   string        `names:"--proxy-timeout, -pt" usage:"Upstream proxy timeout" default:"5s"`
 	HostWithMutualTLS string        `names:"--mutual-tls-host, -mth" usage:"Host where mutual TLS is enabled"`
-	ClientCertFile    string        `names:"--client-cert, -cc" usage:"path to file with client certificate"`
-	ClientKeyFile     string        `names:"--client-key, -ck" usage:"path to file with client key"`
+	ClientCertFile    string        `names:"--client-cert, -cc" usage:"Path to file with client certificate"`
+	ClientKeyFile     string        `names:"--client-key, -ck" usage:"Path to file with client key"`
 	CertFile          string        `names:"--certificate, -c" usage:"Path to root CA certificate" default:""`
 	KeyFile           string        `names:"--key, -k" usage:"Path to root CA key" default:""`
 	SSLLogFile        string        `names:"--sslkeylog, -s" usage:"Path to SSL/TLS secrets log file" default:"ssl.log"`

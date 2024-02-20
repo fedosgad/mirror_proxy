@@ -124,7 +124,7 @@ func getDialer(opts *Options) (proxy.Dialer, error) {
 	return nil, fmt.Errorf("cannot use proxy scheme %q", proxyURL.Scheme)
 }
 
-func getClientTLsCredentials(opts *Options) (*hijackers.ClientTLsCredentials, error) {
+func getClientTLsCredentials(opts *Options) (*hijackers.ClientTLSCredentials, error) {
 	if opts.HostWithMutualTLS == "" {
 		return nil, nil
 	}
@@ -144,7 +144,7 @@ func getClientTLsCredentials(opts *Options) (*hijackers.ClientTLsCredentials, er
 		return nil, err
 	}
 
-	clientTLsCredentials := &hijackers.ClientTLsCredentials{
+	clientTLsCredentials := &hijackers.ClientTLSCredentials{
 		Host: opts.HostWithMutualTLS,
 		Cert: certificate,
 	}
