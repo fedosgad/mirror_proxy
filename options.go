@@ -13,16 +13,18 @@ type Options struct {
 
 	Mode string `names:"--mode, -m" usage:"Operation mode (available: mitm, passthrough)" default:"mitm"`
 
-	DialTimeout     time.Duration `names:"-"`
-	DialTimeoutArg  string        `names:"--dial-timeout, -dt" usage:"Remote host dialing timeout" default:"5s"`
-	ProxyAddr       string        `names:"--proxy, -p" usage:"Upstream proxy address (direct connection if empty)" default:""`
-	ProxyTimeout    time.Duration `names:"-"`
-	ProxyTimeoutArg string        `names:"--proxy-timeout, -pt" usage:"Upstream proxy timeout" default:"5s"`
-
-	CertFile      string `names:"--certificate, -c" usage:"Path to root CA certificate" default:""`
-	KeyFile       string `names:"--key, -k" usage:"Path to root CA key" default:""`
-	SSLLogFile    string `names:"--sslkeylog, -s" usage:"Path to SSL/TLS secrets log file" default:"ssl.log"`
-	AllowInsecure bool   `names:"--insecure, -i" usage:"Allow connecting to insecure remote hosts" default:"false"`
+	DialTimeout       time.Duration `names:"-"`
+	DialTimeoutArg    string        `names:"--dial-timeout, -dt" usage:"Remote host dialing timeout" default:"5s"`
+	ProxyAddr         string        `names:"--proxy, -p" usage:"Upstream proxy address (direct connection if empty)" default:""`
+	ProxyTimeout      time.Duration `names:"-"`
+	ProxyTimeoutArg   string        `names:"--proxy-timeout, -pt" usage:"Upstream proxy timeout" default:"5s"`
+	HostWithMutualTLS string        `names:"--mutual-tls-host, -mth" usage:"Host where mutual TLS is enabled"`
+	ClientCertFile    string        `names:"--client-cert, -cc" usage:"Path to file with client certificate"`
+	ClientKeyFile     string        `names:"--client-key, -ck" usage:"Path to file with client key"`
+	CertFile          string        `names:"--certificate, -c" usage:"Path to root CA certificate" default:""`
+	KeyFile           string        `names:"--key, -k" usage:"Path to root CA key" default:""`
+	SSLLogFile        string        `names:"--sslkeylog, -s" usage:"Path to SSL/TLS secrets log file" default:"ssl.log"`
+	AllowInsecure     bool          `names:"--insecure, -i" usage:"Allow connecting to insecure remote hosts" default:"false"`
 }
 
 func getOptions() *Options {
@@ -59,7 +61,12 @@ func (o Options) check() {
 	if o.DialTimeout == 0 {
 		log.Println("Warning: timeout=0, connections may hang!")
 	}
-	return
+
+	// mutual TLS related options
+	if o.HostWithMutualTLS != "" {
+		failIfEmpty(o.ClientCertFile, "Please provide client certificate file")
+		failIfEmpty(o.ClientKeyFile, "Please provide client key file")
+	}
 }
 
 func parseDuration(inp string, res *time.Duration) {
