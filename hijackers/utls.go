@@ -16,7 +16,7 @@ type utlsHijacker struct {
 	clientTLSConfig      *tls.Config
 	remoteUTLSConfig     *utls.Config
 	generateCertFunc     func(ips []string, names []string) (*tls.Certificate, error)
-	clientTLsCredentials *ClientTLSCredentials
+	clientTLSCredentials *ClientTLSCredentials
 }
 
 func NewUTLSHijacker(
@@ -24,7 +24,7 @@ func NewUTLSHijacker(
 	allowInsecure bool,
 	keyLogWriter io.Writer,
 	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error),
-	clientTlsCredentials *ClientTLSCredentials,
+	clientTlSCredentials *ClientTLSCredentials,
 ) Hijacker {
 	return &utlsHijacker{
 		dialer:        dialer,
@@ -36,7 +36,7 @@ func NewUTLSHijacker(
 			KeyLogWriter: keyLogWriter,
 		},
 		generateCertFunc:     generateCertFunc,
-		clientTLsCredentials: clientTlsCredentials,
+		clientTLSCredentials: clientTlSCredentials,
 	}
 }
 
@@ -112,10 +112,10 @@ func (h *utlsHijacker) clientHelloCallback(
 			remoteConfig.InsecureSkipVerify = true
 		}
 
-		if h.clientTLsCredentials != nil && remoteConfig.ServerName == h.clientTLsCredentials.Host {
+		if h.clientTLSCredentials != nil && remoteConfig.ServerName == h.clientTLSCredentials.Host {
 			remoteConfig.ClientAuth = utls.RequireAndVerifyClientCert
 			remoteConfig.GetClientCertificate = func(cri *utls.CertificateRequestInfo) (*utls.Certificate, error) {
-				return &h.clientTLsCredentials.Cert, nil
+				return &h.clientTLSCredentials.Cert, nil
 			}
 		}
 

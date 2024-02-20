@@ -10,7 +10,7 @@ type HijackerFactory struct {
 	allowInsecure        bool
 	keyLogWriter         io.Writer
 	generateCertFunc     func(ips []string, names []string) (*tls.Certificate, error)
-	clientTLsCredentials *ClientTLSCredentials
+	clientTLSCredentials *ClientTLSCredentials
 }
 
 func NewHijackerFactory(
@@ -18,14 +18,14 @@ func NewHijackerFactory(
 	allowInsecure bool,
 	keyLogWriter io.Writer,
 	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error),
-	clientTLsCredentials *ClientTLSCredentials,
+	clientTLSCredentials *ClientTLSCredentials,
 ) *HijackerFactory {
 	return &HijackerFactory{
 		dialer:               dialer,
 		allowInsecure:        allowInsecure,
 		keyLogWriter:         keyLogWriter,
 		generateCertFunc:     generateCertFunc,
-		clientTLsCredentials: clientTLsCredentials,
+		clientTLSCredentials: clientTLSCredentials,
 	}
 }
 
@@ -39,7 +39,7 @@ func (hf *HijackerFactory) Get(mode string) Hijacker {
 			hf.allowInsecure,
 			hf.keyLogWriter,
 			hf.generateCertFunc,
-			hf.clientTLsCredentials,
+			hf.clientTLSCredentials,
 		)
 	default:
 		return nil

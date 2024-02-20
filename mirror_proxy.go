@@ -36,7 +36,7 @@ func main() {
 		log.Fatalf("Error getting proxy dialer: %v", err)
 	}
 
-	clientTLsCredentials, err := getClientTLsCredentials(opts)
+	clientTLSCredentials, err := getClientTLSCredentials(opts)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func main() {
 		opts.AllowInsecure,
 		klw,
 		cg.GenChildCert,
-		clientTLsCredentials,
+		clientTLSCredentials,
 	)
 	hj := hjf.Get(opts.Mode)
 
@@ -124,7 +124,7 @@ func getDialer(opts *Options) (proxy.Dialer, error) {
 	return nil, fmt.Errorf("cannot use proxy scheme %q", proxyURL.Scheme)
 }
 
-func getClientTLsCredentials(opts *Options) (*hijackers.ClientTLSCredentials, error) {
+func getClientTLSCredentials(opts *Options) (*hijackers.ClientTLSCredentials, error) {
 	if opts.HostWithMutualTLS == "" {
 		return nil, nil
 	}
@@ -144,9 +144,9 @@ func getClientTLsCredentials(opts *Options) (*hijackers.ClientTLSCredentials, er
 		return nil, err
 	}
 
-	clientTLsCredentials := &hijackers.ClientTLSCredentials{
+	clientTLSCredentials := &hijackers.ClientTLSCredentials{
 		Host: opts.HostWithMutualTLS,
 		Cert: certificate,
 	}
-	return clientTLsCredentials, nil
+	return clientTLSCredentials, nil
 }
