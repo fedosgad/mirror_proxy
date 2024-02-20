@@ -24,7 +24,7 @@ func NewUTLSHijacker(
 	allowInsecure bool,
 	keyLogWriter io.Writer,
 	generateCertFunc func(ips []string, names []string) (*tls.Certificate, error),
-	clientTlSCredentials *ClientTLSCredentials,
+	clientTLSCredentials *ClientTLSCredentials,
 ) Hijacker {
 	return &utlsHijacker{
 		dialer:        dialer,
@@ -36,7 +36,7 @@ func NewUTLSHijacker(
 			KeyLogWriter: keyLogWriter,
 		},
 		generateCertFunc:     generateCertFunc,
-		clientTLSCredentials: clientTlSCredentials,
+		clientTLSCredentials: clientTLSCredentials,
 	}
 }
 

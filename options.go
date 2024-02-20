@@ -1,10 +1,9 @@
 package main
 
 import (
+	"github.com/cosiner/flag"
 	"log"
 	"time"
-
-	"github.com/cosiner/flag"
 )
 
 type Options struct {
