@@ -97,3 +97,6 @@ Flags:
     --insecure, -i          Allow connecting to insecure remote hosts                 (type: bool; default: false)
     -h, --help              show help                                                 (type: bool)
 ```
+
+## Similar projects
+ - https://github.com/saucesteals/utlsproxy 
