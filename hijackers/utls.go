@@ -249,7 +249,6 @@ func (f clientHelloFingerprinter) extractALPN() {
 	f.log.Logf("Client ALPN offers: %v", nextProtos)
 
 	fp := utls.Fingerprinter{
-		KeepPSK:           false,
 		AllowBluntMimicry: true,
 		AlwaysAddPadding:  false,
 	}
