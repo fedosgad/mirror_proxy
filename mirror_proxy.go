@@ -26,9 +26,12 @@ func main() {
 	}
 	defer klw.Close()
 
-	cg, err := cert_generator.NewCertGeneratorFromFiles(opts.CertFile, opts.KeyFile)
-	if err != nil {
-		log.Fatal(err)
+	var cg *cert_generator.CertificateGenerator
+	if opts.Mode == hijackers.ModeMITM {
+		cg, err = cert_generator.NewCertGeneratorFromFiles(opts.CertFile, opts.KeyFile)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	dialer, err := getDialer(opts)
